@@ -257,6 +257,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <button class="btn btn-secondary gallery-copy" type="button">Copy Link</button>
                     ${currentFolder === 'all' && img.folder !== 'root' ? `<div class="folder-badge"><i data-lucide="folder"></i> ${img.folder}</div>` : ''}
+                    <button class="btn-delete" title="Delete Image" data-path="${img.path}">
+                        <i data-lucide="trash-2"></i>
+                    </button>
                 </div>
             `;
             item.querySelector('.gallery-copy').addEventListener('click', async (e) => {
@@ -276,6 +279,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     lucide.createIcons();
                 }, 2000);
             });
+            
+            item.querySelector('.btn-delete').addEventListener('click', async (e) => {
+                const btn = e.currentTarget;
+                if (!confirm(`Are you sure you want to delete ${img.name}?`)) return;
+                
+                try {
+                    btn.disabled = true;
+                    btn.innerHTML = '<div class="loader" style="width: 1rem; height: 1rem; border-width: 2px;"></div>';
+                    
+                    const res = await fetch('/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ path: img.path })
+                    });
+                    const result = await res.json();
+                    
+                    if (!res.ok) throw new Error(result.error || 'Delete failed');
+                    
+                    allImages = allImages.filter(i => i.path !== img.path);
+                    renderGallery();
+                } catch(err) {
+                    alert('Error deleting: ' + err.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i data-lucide="trash-2"></i>';
+                    lucide.createIcons();
+                }
+            });
+            
             galleryGrid.appendChild(item);
         });
         lucide.createIcons();

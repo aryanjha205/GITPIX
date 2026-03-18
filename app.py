@@ -228,5 +228,35 @@ def get_gallery():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/delete', methods=['POST'])
+@require_pin
+def delete_image():
+    payload = request.get_json(silent=True) or {}
+    path = payload.get("path")
+    if not path:
+        return jsonify({"error": "No path provided"}), 400
+
+    config = get_github_config()
+    
+    url = f"https://api.github.com/repos/{config['owner']}/{config['repo']}/contents/{path}?ref={config['branch']}"
+    res = requests.get(url, headers=github_headers(config["token"]))
+    if res.status_code != 200:
+        return jsonify({"error": "File not found"}), 404
+        
+    sha = res.json().get('sha')
+    
+    delete_url = f"https://api.github.com/repos/{config['owner']}/{config['repo']}/contents/{path}"
+    data = {
+        "message": f"Delete image: {path}",
+        "sha": sha,
+        "branch": config["branch"]
+    }
+    
+    del_res = requests.delete(delete_url, headers=github_headers(config["token"]), json=data)
+    if del_res.status_code in [200, 201]:
+        return jsonify({"success": True})
+    else:
+        return jsonify({"error": "Failed to delete", "details": extract_github_error(del_res)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

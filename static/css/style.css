@@ -463,9 +463,45 @@ main {
 .gallery-item {
     border-radius: 1.5rem;
     overflow: hidden;
+    position: relative;
     background: var(--card-solid);
     border: 1px solid var(--glass-border);
     transition: var(--transition);
+}
+
+.btn-delete {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background: rgba(239, 68, 68, 0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 2.4rem;
+    height: 2.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: var(--transition);
+    z-index: 20;
+    opacity: 0;
+}
+
+.gallery-item:hover .btn-delete,
+.btn-delete:focus {
+    opacity: 1;
+}
+
+.btn-delete:hover {
+    background: rgba(220, 38, 38, 0.95);
+    transform: scale(1.1);
+}
+
+.btn-delete i {
+    width: 1.1rem;
+    height: 1.1rem;
 }
 
 .gallery-item:hover {
@@ -616,7 +652,15 @@ main {
 
 @media (max-width: 640px) {
     body {
-        padding: 1.5rem 1rem 6rem;
+        padding: 1.2rem 0 6.5rem;
+    }
+    
+    header {
+        padding: 0 1rem;
+    }
+    
+    .subtitle {
+        padding: 0 1rem;
     }
     
     .desktop-only {
@@ -628,7 +672,10 @@ main {
     }
     
     .card {
-        padding: 1.5rem;
+        padding: 1.5rem 1rem;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
     }
     
     main {
@@ -644,8 +691,25 @@ main {
         display: block;
     }
     
+    .section-header, .folder-filter {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
     .gallery-grid {
         grid-template-columns: 1fr;
+        gap: 2px;
+    }
+    
+    .gallery-item {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+    
+    /* Make delete buttons visible on mobile */
+    .btn-delete {
+        opacity: 0.8;
     }
 
     .mobile-dock {
