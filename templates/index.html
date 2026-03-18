@@ -82,6 +82,13 @@
                         </div>
                     </div>
                     
+                    <div id="upload-settings" class="upload-settings" hidden>
+                        <div class="input-wrapper">
+                            <i data-lucide="folder-open"></i>
+                            <input type="text" id="folder-input" placeholder="Repository folder (default: uploads)">
+                        </div>
+                    </div>
+                    
                     <div id="upload-progress" class="progress-container" hidden>
                         <div class="progress-bar">
                             <div class="progress-fill"></div>
@@ -109,6 +116,11 @@
                     <button id="refresh-gallery" class="btn-refresh">
                         <i data-lucide="rotate-cw"></i>
                     </button>
+                </div>
+                <div id="folder-filter" class="folder-filter hidden">
+                    <div class="chips-container" id="folder-chips">
+                        <!-- chips loaded dynamically -->
+                    </div>
                 </div>
                 <div id="gallery-grid" class="gallery-grid">
                     <div class="loader-container">

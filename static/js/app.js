@@ -25,15 +25,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressContainer = document.getElementById('upload-progress');
     const progressFill = document.querySelector('.progress-fill');
     const progressText = document.getElementById('progress-text');
+    const folderInput = document.getElementById('folder-input');
+    const uploadSettings = document.getElementById('upload-settings');
     const galleryGrid = document.getElementById('gallery-grid');
+    const folderFilter = document.getElementById('folder-filter');
+    const folderChips = document.getElementById('folder-chips');
     const refreshBtn = document.getElementById('refresh-gallery');
     const offlineToast = document.getElementById('offline-toast');
 
     let selectedFiles = [];
+    let allImages = [];
+    let currentFolder = 'all';
 
-    function setActiveDockButton(sectionId) {
-        mobileDockButtons.forEach((button) => {
-            button.classList.toggle('is-active', button.dataset.target === sectionId);
+    function switchMobileTab(targetId) {
+        document.querySelectorAll('[data-mobile-section]').forEach(sec => sec.classList.remove('mobile-active'));
+        const target = document.getElementById(targetId);
+        if(target) target.classList.add('mobile-active');
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        
+        mobileDockButtons.forEach(button => {
+            button.classList.toggle('is-active', button.dataset.target === targetId);
         });
     }
 
@@ -136,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         previewContainer.hidden = false;
         dropContent.hidden = true;
         uploadActions.hidden = false;
+        uploadSettings.hidden = false;
         uploadBtn.classList.add('pulse-primary');
     }
 
@@ -151,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         previewGrid.innerHTML = '';
         dropContent.hidden = false;
         uploadActions.hidden = true;
+        uploadSettings.hidden = true;
         progressContainer.hidden = true;
         progressFill.style.width = '0%';
         uploadBtn.disabled = false;
@@ -166,6 +179,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const formData = new FormData();
         selectedFiles.forEach(file => formData.append('images', file));
+        if (folderInput.value.trim()) {
+            formData.append('folder', folderInput.value.trim());
+        }
 
         try {
             const response = await fetch('/upload', { method: 'POST', body: formData });
@@ -197,52 +213,86 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!data.length) {
                 galleryGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 3rem;">No images found.</p>';
+                folderFilter.classList.add('hidden');
                 return;
             }
 
-            galleryGrid.innerHTML = '';
-            data.forEach(img => {
-                const item = document.createElement('article');
-                item.className = 'gallery-item';
-                item.innerHTML = `
-                    <div class="gallery-media"><img src="${img.url}" alt="${img.name}" loading="lazy"></div>
-                    <div class="gallery-overlay">
-                        <div class="gallery-meta">
-                            <span class="gallery-name">${img.name.substring(0, 15)}...</span>
-                            <a class="gallery-open" href="${img.url}" target="_blank">View</a>
-                        </div>
-                        <button class="btn btn-secondary gallery-copy" type="button">Copy Link</button>
-                    </div>
-                `;
-                item.querySelector('.gallery-copy').addEventListener('click', async (e) => {
-                    const btn = e.currentTarget;
-                    const originalHTML = btn.innerHTML;
-                    await navigator.clipboard.writeText(img.url);
-                    btn.innerHTML = '<i data-lucide="check"></i> Copied!';
-                    btn.classList.add('btn-success');
-                    lucide.createIcons();
-                    setTimeout(() => {
-                        btn.innerHTML = originalHTML;
-                        btn.classList.remove('btn-success');
-                        lucide.createIcons();
-                    }, 2000);
+            allImages = data;
+            const folders = [...new Set(data.map(img => img.folder))].sort();
+
+            if (folders.length > 0) {
+                folderFilter.classList.remove('hidden');
+                folderChips.innerHTML = `<button class="chip active" data-folder="all"><i data-lucide="layout-grid"></i> All</button>` + 
+                    folders.map(f => `<button class="chip" data-folder="${f}"><i data-lucide="folder"></i> ${f}</button>`).join('');
+                
+                folderChips.querySelectorAll('.chip').forEach(chip => {
+                    chip.addEventListener('click', (e) => {
+                        folderChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                        e.currentTarget.classList.add('active');
+                        currentFolder = e.currentTarget.dataset.folder;
+                        renderGallery();
+                    });
                 });
-                galleryGrid.appendChild(item);
-            });
-            lucide.createIcons();
+            } else {
+                folderFilter.classList.add('hidden');
+            }
+
+            renderGallery();
         } catch (error) {
             galleryGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #ff5555;">Error loading gallery.</p>';
         }
+    }
+
+    function renderGallery() {
+        galleryGrid.innerHTML = '';
+        const filtered = currentFolder === 'all' ? allImages : allImages.filter(img => img.folder === currentFolder);
+
+        if (!filtered.length) {
+            galleryGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 3rem;">No images in this folder.</p>';
+            return;
+        }
+
+        filtered.forEach(img => {
+            const item = document.createElement('article');
+            item.className = 'gallery-item';
+            item.innerHTML = `
+                <div class="gallery-media"><img src="${img.url}" alt="${img.name}" loading="lazy"></div>
+                <div class="gallery-overlay">
+                    <div class="gallery-meta">
+                        <span class="gallery-name" title="${img.path}">${img.name.length > 15 ? img.name.substring(0, 15) + '...' : img.name}</span>
+                        <a class="gallery-open" href="${img.url}" target="_blank">View</a>
+                    </div>
+                    <button class="btn btn-secondary gallery-copy" type="button">Copy Link</button>
+                    ${currentFolder === 'all' && img.folder !== 'root' ? `<div class="folder-badge"><i data-lucide="folder"></i> ${img.folder}</div>` : ''}
+                </div>
+            `;
+            item.querySelector('.gallery-copy').addEventListener('click', async (e) => {
+                const btn = e.currentTarget;
+                const originalHTML = btn.innerHTML;
+                try {
+                    await navigator.clipboard.writeText(img.url);
+                    btn.innerHTML = '<i data-lucide="check"></i> Copied!';
+                    btn.classList.add('btn-success');
+                } catch(err) {
+                    btn.innerHTML = '<i data-lucide="alert-circle"></i> Retry';
+                }
+                lucide.createIcons();
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.remove('btn-success');
+                    lucide.createIcons();
+                }, 2000);
+            });
+            galleryGrid.appendChild(item);
+        });
+        lucide.createIcons();
     }
 
     refreshBtn.addEventListener('click', loadGallery);
 
     mobileDockButtons.forEach(button => {
         button.addEventListener('click', () => {
-            mobileDockButtons.forEach(b => b.classList.remove('is-active'));
-            button.classList.add('is-active');
-            const target = document.getElementById(button.dataset.target);
-            target.scrollIntoView({ behavior: 'smooth' });
+            switchMobileTab(button.dataset.target);
         });
     });
 
@@ -260,6 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial Load
     loadGallery();
+    switchMobileTab('gallery-section');
     // Check initial session state (if uploader is already unlocked by server)
     if (uploadSection.classList.contains('locked-section')) {
         setLockedState(true);

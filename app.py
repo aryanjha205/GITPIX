@@ -78,13 +78,13 @@ def extract_github_error(response):
 
     return str(payload)
 
-def upload_file_to_github(file, config):
+def upload_file_to_github(file, config, folder="uploads"):
     ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ""
     if ext not in IMAGE_EXTENSIONS:
         return {"success": False, "error": f"Unsupported file type for {file.filename}"}
 
     filename = f"{uuid.uuid4()}.{ext}"
-    path = f"uploads/{filename}"
+    path = f"{folder}/{filename}"
     content = base64.b64encode(file.read()).decode('utf-8')
 
     url = f"https://api.github.com/repos/{config['owner']}/{config['repo']}/contents/{path}"
@@ -139,6 +139,11 @@ def upload_image():
     if missing:
         return jsonify({"error": f"Missing environment variables on server: {', '.join(missing)}"}), 500
 
+    folder = request.form.get('folder', 'uploads').strip()
+    folder = "/".join([p for p in folder.split('/') if p and p != '..'])
+    if not folder:
+        folder = "uploads"
+
     files = request.files.getlist('images')
     if not files:
         single_file = request.files.get('image')
@@ -154,7 +159,7 @@ def upload_image():
         failed = []
 
         for file in files:
-            result = upload_file_to_github(file, config)
+            result = upload_file_to_github(file, config, folder=folder)
             if result["success"]:
                 uploaded.append({
                     "filename": result["filename"],
@@ -193,21 +198,25 @@ def get_gallery():
         return jsonify({"error": f"Missing environment variables: {', '.join(missing)}"}), 500
 
     try:
-        url = f"https://api.github.com/repos/{config['owner']}/{config['repo']}/contents/uploads?ref={config['branch']}"
+        url = f"https://api.github.com/repos/{config['owner']}/{config['repo']}/git/trees/{config['branch']}?recursive=1"
         response = requests.get(url, headers=github_headers(config["token"]), timeout=30)
         
         if response.status_code == 200:
-            files = response.json()
+            tree = response.json().get('tree', [])
             images = []
-            for f in files:
-                if f['type'] == 'file' and any(f['name'].lower().endswith(ext) for ext in IMAGE_EXTENSIONS):
+            for item in tree:
+                if item['type'] == 'blob' and any(item['path'].lower().endswith(ext) for ext in IMAGE_EXTENSIONS):
+                    raw_url = f"https://raw.githubusercontent.com/{config['owner']}/{config['repo']}/{config['branch']}/{item['path']}"
+                    folder_path = '/'.join(item['path'].split('/')[:-1])
                     images.append({
-                        "name": f['name'],
-                        "url": f['download_url']
+                        "name": item['path'].split('/')[-1],
+                        "path": item['path'],
+                        "folder": folder_path if folder_path else 'root',
+                        "url": raw_url
                     })
+            images.sort(key=lambda x: x['path'])
             return jsonify(images)
         elif response.status_code == 404:
-            # Folder might not exist yet
             return jsonify([])
         else:
             return jsonify({
