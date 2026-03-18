@@ -10,9 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadBtn = document.getElementById('upload-btn');
     const progressContainer = document.getElementById('upload-progress');
     const progressFill = document.querySelector('.progress-fill');
-    const successCard = document.getElementById('success-card');
-    const rawUrlInput = document.getElementById('raw-url-input');
-    const copyBtn = document.getElementById('copy-btn');
     const galleryGrid = document.getElementById('gallery-grid');
     const refreshBtn = document.getElementById('refresh-gallery');
     const offlineToast = document.getElementById('offline-toast');
@@ -62,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     previewContainer.hidden = false;
                     dropContent.hidden = true;
                     uploadActions.hidden = false;
-                    successCard.hidden = true;
                 };
             } else {
                 alert('Please upload an image file (PNG, JPG, etc)');
@@ -113,11 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (response.ok) {
                 setTimeout(() => {
-                    successCard.hidden = false;
-                    rawUrlInput.value = result.url;
                     resetUploadUI();
-                    loadGallery();
-                    successCard.scrollIntoView({ behavior: 'smooth' });
+                    loadGallery(result.url);
+                    document.getElementById('gallery-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 500);
             } else {
                 const details = result.details ? `\n${result.details}` : '';
@@ -131,21 +125,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Copy to Clipboard ---
-    copyBtn.addEventListener('click', () => {
-        rawUrlInput.select();
-        document.execCommand('copy');
-        const originalText = copyBtn.innerHTML;
-        copyBtn.innerHTML = '<i data-lucide="check"></i> Copied!';
+    async function copyText(value, button) {
+        const originalText = button.innerHTML;
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(value);
+            } else {
+                const tempInput = document.createElement('input');
+                tempInput.value = value;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                tempInput.remove();
+            }
+            button.innerHTML = '<i data-lucide="check"></i> Copied';
+        } catch (error) {
+            button.innerHTML = '<i data-lucide="alert-circle"></i> Retry';
+        }
         lucide.createIcons();
         setTimeout(() => {
-            copyBtn.innerHTML = originalText;
+            button.innerHTML = originalText;
             lucide.createIcons();
-        }, 2000);
-    });
+        }, 1800);
+    }
 
     // --- Gallery ---
-    async function loadGallery() {
+    async function loadGallery(latestUrl = null) {
         galleryGrid.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
         try {
             const response = await fetch('/gallery');
@@ -165,21 +170,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
             galleryGrid.innerHTML = '';
             images.forEach(img => {
-                const item = document.createElement('div');
+                const item = document.createElement('article');
                 item.className = 'gallery-item';
+                if (latestUrl && img.url === latestUrl) {
+                    item.classList.add('is-new');
+                }
                 item.innerHTML = `
-                    <img src="${img.url}" alt="${img.name}" loading="lazy">
+                    <div class="gallery-media">
+                        <img src="${img.url}" alt="${img.name}" loading="lazy">
+                    </div>
                     <div class="gallery-overlay">
-                        <span>${img.name}</span>
+                        <div class="gallery-meta">
+                            <span class="gallery-name">${img.name}</span>
+                            <a class="gallery-open" href="${img.url}" target="_blank" rel="noopener noreferrer">Open</a>
+                        </div>
+                        <button class="btn btn-secondary gallery-copy" type="button">
+                            <i data-lucide="copy"></i> Copy Link
+                        </button>
                     </div>
                 `;
-                item.onclick = () => {
-                    rawUrlInput.value = img.url;
-                    successCard.hidden = false;
-                    successCard.scrollIntoView({ behavior: 'smooth' });
-                };
+                const media = item.querySelector('.gallery-media');
+                const copyButton = item.querySelector('.gallery-copy');
+                media.addEventListener('click', () => window.open(img.url, '_blank', 'noopener,noreferrer'));
+                copyButton.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    copyText(img.url, copyButton);
+                });
                 galleryGrid.appendChild(item);
             });
+            lucide.createIcons();
         } catch (error) {
             galleryGrid.innerHTML = '<p class="error-text" style="grid-column: 1/-1">Failed to load gallery.</p>';
         }

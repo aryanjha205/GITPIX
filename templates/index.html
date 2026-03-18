@@ -29,6 +29,11 @@
         <main>
             <section id="upload-section">
                 <div class="card glass">
+                    <div class="upload-intro">
+                        <span class="eyebrow">Instant Image Hosting</span>
+                        <h2>Upload once, copy directly from each image card.</h2>
+                        <p>Your latest upload appears in the gallery with its copy button attached, so the image and link stay together on desktop and phone.</p>
+                    </div>
                     <div id="drop-zone" class="drop-zone">
                         <input type="file" id="file-input" accept="image/*" hidden>
                         <div class="drop-content">
@@ -57,20 +62,6 @@
                         </button>
                     </div>
                 </div>
-
-                <div id="success-card" class="card glass success-card" hidden>
-                    <div class="success-header">
-                        <i data-lucide="check-circle" class="success-icon"></i>
-                        <h3>Upload Successful!</h3>
-                    </div>
-                    <div class="url-copy-box">
-                        <input type="text" id="raw-url-input" readonly>
-                        <button id="copy-btn" class="btn btn-secondary">
-                            <i data-lucide="copy"></i> Copy Link
-                        </button>
-                    </div>
-                    <p class="info-text">Your image is now live on GitHub Raw.</p>
-                </div>
             </section>
 
             <section id="gallery-section">
@@ -80,6 +71,7 @@
                         <i data-lucide="rotate-cw"></i>
                     </button>
                 </div>
+                <p class="gallery-hint">Tap or click an image to open it. Use the attached copy button on each card to copy the direct link instantly.</p>
                 <div id="gallery-grid" class="gallery-grid">
                     <!-- Images will be loaded here -->
                     <div class="loader-container">
