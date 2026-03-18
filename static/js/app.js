@@ -1,15 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
     const pinGate = document.getElementById('pin-gate');
+    const appShell = document.getElementById('app-shell');
     const pinForm = document.getElementById('pin-form');
     const pinInput = document.getElementById('pin-input');
     const pinError = document.getElementById('pin-error');
-    const closePinGate = document.getElementById('close-pin-gate');
     
-    const uploadSection = document.getElementById('upload-section');
-    const uploadLockOverlay = document.getElementById('upload-lock-overlay');
     const openUploadBtn = document.getElementById('open-upload-btn');
     const lockBtn = document.getElementById('lock-btn');
-    const unlockTriggerBtn = document.getElementById('unlock-trigger-btn');
     
     const mobileDockButtons = Array.from(document.querySelectorAll('.mobile-dock-btn'));
 
@@ -50,15 +47,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setLockedState(isLocked) {
         if (isLocked) {
-            uploadSection.classList.add('locked-section');
-            uploadLockOverlay.classList.remove('hidden');
+            appShell.classList.add('blurred-app');
             openUploadBtn.classList.remove('hidden');
             lockBtn.classList.add('hidden');
             pinInput.value = '';
             pinError.classList.add('hidden');
+            pinGate.classList.remove('hidden');
         } else {
-            uploadSection.classList.remove('locked-section');
-            uploadLockOverlay.classList.add('hidden');
+            appShell.classList.remove('blurred-app');
             openUploadBtn.classList.add('hidden');
             lockBtn.classList.remove('hidden');
             pinGate.classList.add('hidden');
@@ -88,21 +84,18 @@ document.addEventListener('DOMContentLoaded', () => {
         await unlockApp(pinInput.value.trim());
     });
 
-    [openUploadBtn, unlockTriggerBtn].forEach(btn => {
-        btn?.addEventListener('click', () => {
+    if (openUploadBtn) {
+        openUploadBtn.addEventListener('click', () => {
             pinGate.classList.remove('hidden');
             pinInput.focus();
         });
-    });
-
-    closePinGate.addEventListener('click', () => {
-        pinGate.classList.add('hidden');
-    });
+    }
 
     lockBtn.addEventListener('click', async () => {
         await fetch('/logout', { method: 'POST' });
         resetUploadUI();
         setLockedState(true);
+        galleryGrid.innerHTML = '<div class="loader-container"><div class="loader"></div></div>'; // Clear on lock
     });
 
     // File Handling
@@ -312,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadGallery();
     switchMobileTab('gallery-section');
     // Check initial session state (if uploader is already unlocked by server)
-    if (uploadSection.classList.contains('locked-section')) {
+    if (appShell.classList.contains('blurred-app')) {
         setLockedState(true);
     } else {
         setLockedState(false);

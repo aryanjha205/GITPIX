@@ -23,22 +23,19 @@
                 <i data-lucide="shield-check"></i>
                 Admin Access
             </div>
-            <h2>Enter PIN to Upload</h2>
-            <p>Accessing the upload portal requires authentication. The gallery below remains public.</p>
+            <h2>Enter PIN to Unlock</h2>
+            <p>Accessing this portal requires authentication. Please enter your PIN.</p>
             <form id="pin-form" class="pin-form">
                 <input id="pin-input" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="Enter PIN">
-                <button type="submit" class="btn btn-primary">
-                    <i data-lucide="unlock"></i> Unlock Portal
+                <button type="submit" class="btn btn-primary pulse-primary">
+                    <i data-lucide="unlock"></i> Unlock Dashboard
                 </button>
             </form>
-            <button id="close-pin-gate" class="btn btn-ghost" type="button">
-                Keep Browsing Gallery
-            </button>
             <p id="pin-error" class="pin-error hidden">Wrong PIN. Try again.</p>
         </div>
     </div>
 
-    <div class="app-container" id="app-shell">
+    <div class="app-container {% if not app_unlocked %}blurred-app{% endif %}" id="app-shell">
         <header>
             <div class="logo">
                 <i data-lucide="image"></i>
@@ -57,7 +54,7 @@
         <p class="subtitle">Secure GitHub-Powered Image Hosting</p>
 
         <main>
-            <section id="upload-section" class="{% if not app_unlocked %}locked-section{% endif %}" data-mobile-section="upload">
+            <section id="upload-section" data-mobile-section="upload">
                 <div class="card glass">
                     <div class="upload-intro">
                         <span class="eyebrow">Instant Hosting</span>
@@ -100,12 +97,6 @@
                         <button id="upload-btn" class="btn btn-primary">
                             <i data-lucide="send"></i> Push to GitHub
                         </button>
-                    </div>
-
-                    <div id="upload-lock-overlay" class="lock-overlay {% if app_unlocked %}hidden{% endif %}">
-                        <i data-lucide="lock"></i>
-                        <p>Unlock to enable uploading</p>
-                        <button id="unlock-trigger-btn" class="btn btn-primary btn-sm">Enter PIN</button>
                     </div>
                 </div>
             </section>

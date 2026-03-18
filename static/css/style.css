@@ -190,9 +190,11 @@ main {
     height: 100%;
 }
 
-.locked-section {
-    filter: grayscale(0.5);
+.blurred-app {
+    filter: blur(8px) grayscale(0.2);
     pointer-events: none;
+    user-select: none;
+    opacity: 0.8;
 }
 
 .lock-overlay {
