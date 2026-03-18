@@ -186,7 +186,6 @@ def upload_image():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/gallery', methods=['GET'])
-@require_pin
 def get_gallery():
     config = get_github_config()
     missing = check_config(config)

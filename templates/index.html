@@ -17,35 +17,68 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-    <div class="app-container">
+    <div id="pin-gate" class="pin-gate {% if app_unlocked %}hidden{% endif %}">
+        <div class="pin-shell glass">
+            <div class="pin-badge">
+                <i data-lucide="shield-check"></i>
+                Admin Access
+            </div>
+            <h2>Enter PIN to Upload</h2>
+            <p>Accessing the upload portal requires authentication. The gallery below remains public.</p>
+            <form id="pin-form" class="pin-form">
+                <input id="pin-input" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="Enter PIN">
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="unlock"></i> Unlock Portal
+                </button>
+            </form>
+            <button id="close-pin-gate" class="btn btn-ghost" type="button">
+                Keep Browsing Gallery
+            </button>
+            <p id="pin-error" class="pin-error hidden">Wrong PIN. Try again.</p>
+        </div>
+    </div>
+
+    <div class="app-container" id="app-shell">
         <header>
             <div class="logo">
                 <i data-lucide="image"></i>
                 <h1>GitPix</h1>
             </div>
-            <p class="subtitle">Direct-to-GitHub Image Hosting</p>
+            <div class="header-actions">
+                <button id="open-upload-btn" class="btn btn-primary {% if app_unlocked %}hidden{% endif %}" type="button">
+                    <i data-lucide="plus"></i> <span class="desktop-only">Upload Image</span>
+                </button>
+                <button id="lock-btn" class="btn btn-secondary lock-btn {% if not app_unlocked %}hidden{% endif %}" type="button">
+                    <i data-lucide="lock"></i> Lock Portal
+                </button>
+            </div>
         </header>
 
+        <p class="subtitle">Secure GitHub-Powered Image Hosting</p>
+
         <main>
-            <section id="upload-section">
+            <section id="upload-section" class="{% if not app_unlocked %}locked-section{% endif %}" data-mobile-section="upload">
                 <div class="card glass">
                     <div class="upload-intro">
-                        <span class="eyebrow">Instant Image Hosting</span>
-                        <h2>Upload once, copy directly from each image card.</h2>
-                        <p>Your latest upload appears in the gallery with its copy button attached, so the image and link stay together on desktop and phone.</p>
+                        <span class="eyebrow">Instant Hosting</span>
+                        <h2>Upload to your private repo.</h2>
                     </div>
+                    
                     <div id="drop-zone" class="drop-zone">
-                        <input type="file" id="file-input" accept="image/*" hidden>
+                        <input type="file" id="file-input" accept="image/*" multiple hidden>
                         <div class="drop-content">
                             <i data-lucide="upload-cloud" class="upload-icon"></i>
-                            <h3>Drag & Drop to Upload</h3>
-                            <p>or click to browse from your device</p>
+                            <h3>Drag & Drop Images</h3>
+                            <p>or tap to browse</p>
                         </div>
                         <div id="preview-container" class="preview-container" hidden>
-                            <img id="image-preview" src="" alt="Preview">
-                            <button id="remove-preview" class="btn-icon">
-                                <i data-lucide="x"></i>
-                            </button>
+                            <div class="preview-topbar">
+                                <p id="preview-count">0 files selected</p>
+                                <button id="remove-preview" class="btn-icon" type="button">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
+                            <div id="preview-grid" class="preview-grid"></div>
                         </div>
                     </div>
                     
@@ -61,19 +94,23 @@
                             <i data-lucide="send"></i> Push to GitHub
                         </button>
                     </div>
+
+                    <div id="upload-lock-overlay" class="lock-overlay {% if app_unlocked %}hidden{% endif %}">
+                        <i data-lucide="lock"></i>
+                        <p>Unlock to enable uploading</p>
+                        <button id="unlock-trigger-btn" class="btn btn-primary btn-sm">Enter PIN</button>
+                    </div>
                 </div>
             </section>
 
-            <section id="gallery-section">
+            <section id="gallery-section" data-mobile-section="gallery">
                 <div class="section-header">
-                    <h2><i data-lucide="grid"></i> Your Gallery</h2>
+                    <h2><i data-lucide="grid"></i> Public Gallery</h2>
                     <button id="refresh-gallery" class="btn-refresh">
                         <i data-lucide="rotate-cw"></i>
                     </button>
                 </div>
-                <p class="gallery-hint">Tap or click an image to open it. Use the attached copy button on each card to copy the direct link instantly.</p>
                 <div id="gallery-grid" class="gallery-grid">
-                    <!-- Images will be loaded here -->
                     <div class="loader-container">
                         <div class="loader"></div>
                     </div>
@@ -82,9 +119,20 @@
         </main>
 
         <footer>
-            <p>&copy; 2026 GitPix. Powered by Flask & GitHub API.</p>
+            <p>&copy; 2026 GitPix. Open-source privacy-first hosting.</p>
         </footer>
     </div>
+
+    <nav class="mobile-dock" id="mobile-dock" aria-label="Mobile navigation">
+        <button class="mobile-dock-btn is-active" type="button" data-target="gallery-section">
+            <i data-lucide="grid-2x2"></i>
+            <span>Gallery</span>
+        </button>
+        <button class="mobile-dock-btn" type="button" data-target="upload-section">
+            <i data-lucide="upload-cloud"></i>
+            <span>Upload</span>
+        </button>
+    </nav>
 
     <!-- Offline Message -->
     <div id="offline-toast" class="toast hidden">

@@ -1,13 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
     const pinGate = document.getElementById('pin-gate');
-    const appShell = document.getElementById('app-shell');
     const pinForm = document.getElementById('pin-form');
     const pinInput = document.getElementById('pin-input');
     const pinError = document.getElementById('pin-error');
+    const closePinGate = document.getElementById('close-pin-gate');
+    
+    const uploadSection = document.getElementById('upload-section');
+    const uploadLockOverlay = document.getElementById('upload-lock-overlay');
+    const openUploadBtn = document.getElementById('open-upload-btn');
     const lockBtn = document.getElementById('lock-btn');
-    const mobileDock = document.getElementById('mobile-dock');
+    const unlockTriggerBtn = document.getElementById('unlock-trigger-btn');
+    
     const mobileDockButtons = Array.from(document.querySelectorAll('.mobile-dock-btn'));
-    const mobileSections = Array.from(document.querySelectorAll('[data-mobile-section]'));
 
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
@@ -34,38 +38,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setLockedState(isLocked) {
-        appShell.classList.toggle('app-locked', isLocked);
-        pinGate.classList.toggle('hidden', !isLocked);
         if (isLocked) {
+            uploadSection.classList.add('locked-section');
+            uploadLockOverlay.classList.remove('hidden');
+            openUploadBtn.classList.remove('hidden');
+            lockBtn.classList.add('hidden');
             pinInput.value = '';
             pinError.classList.add('hidden');
-            galleryGrid.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
-            pinInput.focus();
+        } else {
+            uploadSection.classList.remove('locked-section');
+            uploadLockOverlay.classList.add('hidden');
+            openUploadBtn.classList.add('hidden');
+            lockBtn.classList.remove('hidden');
+            pinGate.classList.add('hidden');
         }
     }
 
     async function unlockApp(pin) {
-        const response = await fetch('/unlock', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin })
-        });
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || 'Unlock failed');
-        }
-        setLockedState(false);
-        loadGallery();
-    }
-
-    pinForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
         try {
-            await unlockApp(pinInput.value.trim());
+            const response = await fetch('/unlock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin })
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || 'Unlock failed');
+            }
+            setLockedState(false);
         } catch (error) {
             pinError.textContent = error.message;
             pinError.classList.remove('hidden');
         }
+    }
+
+    pinForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await unlockApp(pinInput.value.trim());
+    });
+
+    [openUploadBtn, unlockTriggerBtn].forEach(btn => {
+        btn?.addEventListener('click', () => {
+            pinGate.classList.remove('hidden');
+            pinInput.focus();
+        });
+    });
+
+    closePinGate.addEventListener('click', () => {
+        pinGate.classList.add('hidden');
     });
 
     lockBtn.addEventListener('click', async () => {
@@ -74,51 +94,40 @@ document.addEventListener('DOMContentLoaded', () => {
         setLockedState(true);
     });
 
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
+    // File Handling
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
     });
 
-    function preventDefaults(event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-
-    ['dragenter', 'dragover'].forEach((eventName) => {
+    ['dragenter', 'dragover'].forEach(eventName => {
         dropZone.addEventListener(eventName, () => dropZone.classList.add('active'), false);
     });
 
-    ['dragleave', 'drop'].forEach((eventName) => {
+    ['dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, () => dropZone.classList.remove('active'), false);
     });
 
-    dropZone.addEventListener('drop', (event) => handleFiles(event.dataTransfer.files), false);
+    dropZone.addEventListener('drop', e => handleFiles(e.dataTransfer.files), false);
     dropZone.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', function() {
-        handleFiles(this.files);
-    });
+    fileInput.addEventListener('change', function() { handleFiles(this.files); });
 
     function handleFiles(fileList) {
-        const files = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
-        if (!files.length) {
-            alert('Please choose image files only.');
-            return;
-        }
+        const files = Array.from(fileList || []).filter(file => file.type.startsWith('image/'));
+        if (!files.length) return;
 
         selectedFiles = files;
-        previewCount.textContent = `${files.length} file${files.length > 1 ? 's' : ''} selected`;
+        previewCount.textContent = `${files.length} selected`;
         previewGrid.innerHTML = '';
 
-        files.forEach((file) => {
+        files.forEach(file => {
             const reader = new FileReader();
             reader.onload = () => {
                 const item = document.createElement('div');
                 item.className = 'preview-item';
-                item.innerHTML = `
-                    <img src="${reader.result}" alt="${file.name}">
-                    <div class="preview-item-meta">
-                        <span>${file.name}</span>
-                    </div>
-                `;
+                item.innerHTML = `<img src="${reader.result}" alt="${file.name}">`;
                 previewGrid.appendChild(item);
             };
             reader.readAsDataURL(file);
@@ -127,11 +136,11 @@ document.addEventListener('DOMContentLoaded', () => {
         previewContainer.hidden = false;
         dropContent.hidden = true;
         uploadActions.hidden = false;
-        lucide.createIcons();
+        uploadBtn.classList.add('pulse-primary');
     }
 
-    removePreviewBtn.addEventListener('click', (event) => {
-        event.stopPropagation();
+    removePreviewBtn.addEventListener('click', e => {
+        e.stopPropagation();
         resetUploadUI();
     });
 
@@ -140,178 +149,102 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.value = '';
         previewContainer.hidden = true;
         previewGrid.innerHTML = '';
-        previewCount.textContent = '0 files selected';
         dropContent.hidden = false;
         uploadActions.hidden = true;
         progressContainer.hidden = true;
         progressFill.style.width = '0%';
-        progressText.textContent = 'Uploading...';
         uploadBtn.disabled = false;
+        uploadBtn.classList.remove('pulse-primary');
     }
 
     uploadBtn.addEventListener('click', async () => {
-        if (!selectedFiles.length) {
-            return;
-        }
-
+        if (!selectedFiles.length) return;
         uploadBtn.disabled = true;
+        uploadBtn.classList.remove('pulse-primary');
         progressContainer.hidden = false;
-        progressText.textContent = `Uploading ${selectedFiles.length} image(s)...`;
-
-        let progress = 0;
-        const interval = setInterval(() => {
-            progress += 8;
-            if (progress >= 90) {
-                clearInterval(interval);
-            }
-            progressFill.style.width = `${Math.min(progress, 90)}%`;
-        }, 220);
+        progressText.textContent = `Pushing to GitHub...`;
 
         const formData = new FormData();
-        selectedFiles.forEach((file) => formData.append('images', file));
+        selectedFiles.forEach(file => formData.append('images', file));
 
         try {
-            const response = await fetch('/upload', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetch('/upload', { method: 'POST', body: formData });
             const result = await response.json();
-            clearInterval(interval);
-            progressFill.style.width = '100%';
-
+            
             if (response.ok) {
-                const latestUrls = (result.uploaded || []).map((item) => item.url);
-                progressText.textContent = result.failed?.length
-                    ? `Uploaded ${result.uploaded.length} image(s), ${result.failed.length} failed`
-                    : `Uploaded ${result.uploaded.length} image(s)`;
+                progressFill.style.width = '100%';
+                progressText.textContent = 'Success!';
                 setTimeout(() => {
                     resetUploadUI();
-                    loadGallery(latestUrls);
-                    document.getElementById('gallery-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    if (result.failed?.length) {
-                        alert(`Some images failed:\n${result.failed.map((item) => `${item.filename}: ${item.details || item.error}`).join('\n')}`);
-                    }
-                }, 600);
+                    loadGallery();
+                }, 1000);
             } else {
-                const details = Array.isArray(result.details)
-                    ? result.details.map((item) => `${item.filename}: ${item.details || item.error}`).join('\n')
-                    : result.details;
-                alert(`Upload failed: ${result.error || 'Server error'}${details ? `\n${details}` : ''}`);
+                alert(result.error || 'Upload failed');
                 uploadBtn.disabled = false;
             }
         } catch (error) {
-            clearInterval(interval);
-            alert(`Error: ${error.message}`);
+            alert('Error: ' + error.message);
             uploadBtn.disabled = false;
         }
     });
 
-    async function copyText(value, button) {
-        const originalText = button.innerHTML;
-        try {
-            if (navigator.clipboard?.writeText) {
-                await navigator.clipboard.writeText(value);
-            } else {
-                const tempInput = document.createElement('input');
-                tempInput.value = value;
-                document.body.appendChild(tempInput);
-                tempInput.select();
-                document.execCommand('copy');
-                tempInput.remove();
-            }
-            button.innerHTML = '<i data-lucide="check"></i> Copied';
-        } catch (error) {
-            button.innerHTML = '<i data-lucide="alert-circle"></i> Retry';
-        }
-        lucide.createIcons();
-        setTimeout(() => {
-            button.innerHTML = originalText;
-            lucide.createIcons();
-        }, 1800);
-    }
-
-    async function loadGallery(latestUrls = []) {
+    async function loadGallery() {
         galleryGrid.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
         try {
             const response = await fetch('/gallery');
             const data = await response.json();
-
-            if (!response.ok) {
-                if (response.status === 401) {
-                    setLockedState(true);
-                    return;
-                }
-                galleryGrid.innerHTML = `<p class="error-text" style="grid-column: 1/-1">${data.error || 'Failed to load gallery'}</p>`;
-                return;
-            }
+            if (!response.ok) throw new Error(data.error);
 
             if (!data.length) {
-                galleryGrid.innerHTML = '<p class="info-text" style="grid-column: 1/-1">No images in your repository gallery yet.</p>';
+                galleryGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 3rem;">No images found.</p>';
                 return;
             }
 
             galleryGrid.innerHTML = '';
-            data.forEach((img) => {
+            data.forEach(img => {
                 const item = document.createElement('article');
                 item.className = 'gallery-item';
-                if (latestUrls.includes(img.url)) {
-                    item.classList.add('is-new');
-                }
                 item.innerHTML = `
-                    <div class="gallery-media">
-                        <img src="${img.url}" alt="${img.name}" loading="lazy">
-                    </div>
+                    <div class="gallery-media"><img src="${img.url}" alt="${img.name}" loading="lazy"></div>
                     <div class="gallery-overlay">
                         <div class="gallery-meta">
-                            <span class="gallery-name">${img.name}</span>
-                            <a class="gallery-open" href="${img.url}" target="_blank" rel="noopener noreferrer">Open</a>
+                            <span class="gallery-name">${img.name.substring(0, 15)}...</span>
+                            <a class="gallery-open" href="${img.url}" target="_blank">View</a>
                         </div>
-                        <button class="btn btn-secondary gallery-copy" type="button">
-                            <i data-lucide="copy"></i> Copy Link
-                        </button>
+                        <button class="btn btn-secondary gallery-copy" type="button">Copy Link</button>
                     </div>
                 `;
-                item.querySelector('.gallery-media').addEventListener('click', () => {
-                    window.open(img.url, '_blank', 'noopener,noreferrer');
-                });
-                item.querySelector('.gallery-copy').addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    copyText(img.url, event.currentTarget);
+                item.querySelector('.gallery-copy').addEventListener('click', async (e) => {
+                    const btn = e.currentTarget;
+                    const originalHTML = btn.innerHTML;
+                    await navigator.clipboard.writeText(img.url);
+                    btn.innerHTML = '<i data-lucide="check"></i> Copied!';
+                    btn.classList.add('btn-success');
+                    lucide.createIcons();
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.classList.remove('btn-success');
+                        lucide.createIcons();
+                    }, 2000);
                 });
                 galleryGrid.appendChild(item);
             });
             lucide.createIcons();
         } catch (error) {
-            galleryGrid.innerHTML = '<p class="error-text" style="grid-column: 1/-1">Failed to load gallery.</p>';
+            galleryGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #ff5555;">Error loading gallery.</p>';
         }
     }
 
-    refreshBtn.addEventListener('click', () => loadGallery());
+    refreshBtn.addEventListener('click', loadGallery);
 
-    mobileDockButtons.forEach((button) => {
+    mobileDockButtons.forEach(button => {
         button.addEventListener('click', () => {
+            mobileDockButtons.forEach(b => b.classList.remove('is-active'));
+            button.classList.add('is-active');
             const target = document.getElementById(button.dataset.target);
-            if (!target) {
-                return;
-            }
-            setActiveDockButton(button.dataset.target);
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            target.scrollIntoView({ behavior: 'smooth' });
         });
     });
-
-    const sectionObserver = new IntersectionObserver((entries) => {
-        const visibleEntry = entries
-            .filter((entry) => entry.isIntersecting)
-            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-
-        if (visibleEntry) {
-            setActiveDockButton(visibleEntry.target.id);
-        }
-    }, {
-        threshold: [0.3, 0.55, 0.8]
-    });
-
-    mobileSections.forEach((section) => sectionObserver.observe(section));
 
     window.addEventListener('online', () => {
         offlineToast.classList.add('hidden');
@@ -325,9 +258,12 @@ document.addEventListener('DOMContentLoaded', () => {
         offlineToast.classList.remove('hidden');
     }
 
-    if (pinGate.classList.contains('hidden')) {
-        loadGallery();
+    // Initial Load
+    loadGallery();
+    // Check initial session state (if uploader is already unlocked by server)
+    if (uploadSection.classList.contains('locked-section')) {
+        setLockedState(true);
     } else {
-        pinInput.focus();
+        setLockedState(false);
     }
 });
