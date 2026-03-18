@@ -9,16 +9,61 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# GitHub Configuration
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-GITHUB_USERNAME = os.getenv("GITHUB_USERNAME")
-GITHUB_REPO = os.getenv("GITHUB_REPO")
-GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
+def get_github_config():
+    token = os.getenv("GITHUB_TOKEN")
+    username = os.getenv("GITHUB_USERNAME")
+    repo_value = os.getenv("GITHUB_REPO")
+    branch = os.getenv("GITHUB_BRANCH", "main")
 
-HEADERS = {
-    "Authorization": f"token {GITHUB_TOKEN}",
-    "Accept": "application/vnd.github.v3+json"
-}
+    owner = username
+    repo = repo_value
+
+    # Support either:
+    # GITHUB_USERNAME=owner + GITHUB_REPO=repo
+    # or GITHUB_REPO=owner/repo
+    if repo_value and "/" in repo_value:
+        owner, repo = repo_value.split("/", 1)
+
+    return {
+        "token": token,
+        "owner": owner,
+        "repo": repo,
+        "branch": branch,
+    }
+
+def check_config(config):
+    missing = []
+    if not config["token"]:
+        missing.append("GITHUB_TOKEN")
+    if not config["repo"]:
+        missing.append("GITHUB_REPO")
+    if not config["owner"]:
+        missing.append("GITHUB_USERNAME (or use GITHUB_REPO=owner/repo)")
+    return missing
+
+def github_headers(token):
+    return {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "GitPixUploader",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+def extract_github_error(response):
+    try:
+        payload = response.json()
+    except ValueError:
+        return response.text or "Unknown GitHub API error"
+
+    if isinstance(payload, dict):
+        message = payload.get("message")
+        errors = payload.get("errors")
+        if errors:
+            return f"{message} | details: {errors}"
+        if message:
+            return message
+
+    return str(payload)
 
 @app.route('/')
 def index():
@@ -26,6 +71,11 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
+    config = get_github_config()
+    missing = check_config(config)
+    if missing:
+        return jsonify({"error": f"Missing environment variables on server: {', '.join(missing)}"}), 500
+
     if 'image' not in request.files:
         return jsonify({"error": "No image provided"}), 400
     
@@ -43,17 +93,17 @@ def upload_image():
         content = base64.b64encode(file.read()).decode('utf-8')
 
         # Push to GitHub API
-        url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO}/contents/{path}"
+        url = f"https://api.github.com/repos/{config['owner']}/{config['repo']}/contents/{path}"
         data = {
             "message": f"Upload image: {filename}",
             "content": content,
-            "branch": GITHUB_BRANCH
+            "branch": config["branch"]
         }
 
-        response = requests.put(url, headers=HEADERS, json=data)
+        response = requests.put(url, headers=github_headers(config["token"]), json=data, timeout=30)
         
         if response.status_code in [201, 200]:
-            raw_url = f"https://raw.githubusercontent.com/{GITHUB_USERNAME}/{GITHUB_REPO}/{GITHUB_BRANCH}/{path}"
+            raw_url = f"https://raw.githubusercontent.com/{config['owner']}/{config['repo']}/{config['branch']}/{path}"
             return jsonify({
                 "message": "Upload successful",
                 "url": raw_url,
@@ -62,7 +112,7 @@ def upload_image():
         else:
             return jsonify({
                 "error": "Failed to upload to GitHub",
-                "details": response.json()
+                "details": extract_github_error(response)
             }), response.status_code
 
     except Exception as e:
@@ -70,9 +120,14 @@ def upload_image():
 
 @app.route('/gallery', methods=['GET'])
 def get_gallery():
+    config = get_github_config()
+    missing = check_config(config)
+    if missing:
+        return jsonify({"error": f"Missing environment variables: {', '.join(missing)}"}), 500
+
     try:
-        url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO}/contents/uploads?ref={GITHUB_BRANCH}"
-        response = requests.get(url, headers=HEADERS)
+        url = f"https://api.github.com/repos/{config['owner']}/{config['repo']}/contents/uploads?ref={config['branch']}"
+        response = requests.get(url, headers=github_headers(config["token"]), timeout=30)
         
         if response.status_code == 200:
             files = response.json()
@@ -88,7 +143,10 @@ def get_gallery():
             # Folder might not exist yet
             return jsonify([])
         else:
-            return jsonify({"error": "Failed to fetch gallery"}), response.status_code
+            return jsonify({
+                "error": "Failed to fetch gallery",
+                "details": extract_github_error(response)
+            }), response.status_code
             
     except Exception as e:
         return jsonify({"error": str(e)}), 500

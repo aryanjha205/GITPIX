@@ -120,7 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     successCard.scrollIntoView({ behavior: 'smooth' });
                 }, 500);
             } else {
-                alert(`Upload failed: ${result.error || 'Server error'}`);
+                const details = result.details ? `\n${result.details}` : '';
+                alert(`Upload failed: ${result.error || 'Server error'}${details}`);
                 uploadBtn.disabled = false;
             }
         } catch (error) {
@@ -148,7 +149,14 @@ document.addEventListener('DOMContentLoaded', () => {
         galleryGrid.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
         try {
             const response = await fetch('/gallery');
-            const images = await response.json();
+            const data = await response.json();
+            
+            if (!response.ok) {
+                galleryGrid.innerHTML = `<p class="error-text" style="grid-column: 1/-1; color: #ff4444; text-align: center;">${data.error || 'Failed to load gallery'}</p>`;
+                return;
+            }
+
+            const images = data;
             
             if (images.length === 0) {
                 galleryGrid.innerHTML = '<p class="info-text" style="grid-column: 1/-1">No images in your repository gallery yet.</p>';
