@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitPix | Modern GitHub Image Host</title>
+    <meta name="description" content="Securely upload and share images directly to your GitHub repository with ease. Simple, fast, and PWA enabled.">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+    <meta name="theme-color" content="#6366f1">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="logo">
+                <i data-lucide="image"></i>
+                <h1>GitPix</h1>
+            </div>
+            <p class="subtitle">Direct-to-GitHub Image Hosting</p>
+        </header>
+
+        <main>
+            <section id="upload-section">
+                <div class="card glass">
+                    <div id="drop-zone" class="drop-zone">
+                        <input type="file" id="file-input" accept="image/*" hidden>
+                        <div class="drop-content">
+                            <i data-lucide="upload-cloud" class="upload-icon"></i>
+                            <h3>Drag & Drop to Upload</h3>
+                            <p>or click to browse from your device</p>
+                        </div>
+                        <div id="preview-container" class="preview-container" hidden>
+                            <img id="image-preview" src="" alt="Preview">
+                            <button id="remove-preview" class="btn-icon">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="upload-progress" class="progress-container" hidden>
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                        <p id="progress-text">Uploading...</p>
+                    </div>
+
+                    <div id="upload-actions" class="actions" hidden>
+                        <button id="upload-btn" class="btn btn-primary">
+                            <i data-lucide="send"></i> Push to GitHub
+                        </button>
+                    </div>
+                </div>
+
+                <div id="success-card" class="card glass success-card" hidden>
+                    <div class="success-header">
+                        <i data-lucide="check-circle" class="success-icon"></i>
+                        <h3>Upload Successful!</h3>
+                    </div>
+                    <div class="url-copy-box">
+                        <input type="text" id="raw-url-input" readonly>
+                        <button id="copy-btn" class="btn btn-secondary">
+                            <i data-lucide="copy"></i> Copy Link
+                        </button>
+                    </div>
+                    <p class="info-text">Your image is now live on GitHub Raw.</p>
+                </div>
+            </section>
+
+            <section id="gallery-section">
+                <div class="section-header">
+                    <h2><i data-lucide="grid"></i> Your Gallery</h2>
+                    <button id="refresh-gallery" class="btn-refresh">
+                        <i data-lucide="rotate-cw"></i>
+                    </button>
+                </div>
+                <div id="gallery-grid" class="gallery-grid">
+                    <!-- Images will be loaded here -->
+                    <div class="loader-container">
+                        <div class="loader"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 GitPix. Powered by Flask & GitHub API.</p>
+        </footer>
+    </div>
+
+    <!-- Offline Message -->
+    <div id="offline-toast" class="toast hidden">
+        <i data-lucide="wifi-off"></i>
+        <span>No internet connection. Using offline cached UI.</span>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/js/sw.js')
+                    .then(reg => console.log('SW Registered', reg))
+                    .catch(err => console.error('SW Registration failed', err));
+            });
+        }
+    </script>
+</body>
+</html>
